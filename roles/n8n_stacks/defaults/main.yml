@@ -1,0 +1,16 @@
+---
+# Valeurs par défaut pour le rôle n8n_stacks.
+# Ces valeurs sont destinées à être écrasées dans des fichiers
+# de variables d'inventaire (ex: group_vars/n8n_servers.yml).
+
+n8n_dir: /srv/n8n
+
+# --- Variables de configuration de l'application ---
+# Fournissez vos propres valeurs dans group_vars.
+LETSENCRYPT_EMAIL: ""
+N8N_DOMAIN: ""
+TIMEZONE: "Etc/UTC"
+                                                              
+
+# defaults file for n8n_stacks
+n8n_worker_replicas: 2

@@ -1,0 +1,84 @@
+services:
+  traefik:
+    image: "traefik:v2.9"
+    container_name: traefik
+    restart: always
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      #  Comment to let Traefik checks if the domain is valid without Cloudflare catching the request
+      # - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge=true"
+      - "--certificatesresolvers.myresolver.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.myresolver.acme.email={{ LETSENCRYPT_EMAIL }}"
+      - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - n8n-network
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - n8n-network
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n_main
+    restart: always
+    ports:
+      - "127.0.0.1:5678:5678"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.n8n.rule=Host(`{{ N8N_DOMAIN }}`)"
+      - "traefik.http.routers.n8n.entrypoints=websecure"
+      - "traefik.http.routers.n8n.tls.certresolver=myresolver"
+      - "traefik.http.middlewares.n8n-ssl.redirectscheme.scheme=https"
+      - "traefik.http.routers.n8n.middlewares=n8n-ssl"
+      # --- Basic Auth Middleware ---
+      # - "traefik.http.middlewares.n8n-auth.basicauth.users=admin:$apr1$j8.AAn/B$2yLdKAx4H3aJ3d0g.4s..." # Remplacez par votre ligne htpasswd
+      # - "traefik.http.routers.n8n.middlewares=n8n-auth"
+      - "traefik.http.services.n8n.loadbalancer.server.port=5678"
+    env_file: .env
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - n8n-network
+    depends_on:
+      - redis
+      - traefik
+
+{% for i in range(1, n8n_worker_replicas + 1) %}
+  n8n-worker-{{ i }}:
+    image: n8nio/n8n:latest
+    container_name: n8n_worker_{{ i }}
+    restart: always
+    command: worker
+    env_file: .env
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - n8n-network
+    depends_on:
+      - n8n
+      - redis
+{% endfor %}
+
+volumes:
+  n8n_data:
+  redis_data:
+  letsencrypt:
+
+networks:
+  n8n-network:

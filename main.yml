@@ -1,0 +1,10 @@
+- hosts: n8n_servers
+  become: yes
+  tasks:
+    - name: Include common role
+      include_role:
+        name: common
+
+    - name: Include n8n_stacks role
+      include_role:
+        name: n8n_stacks
