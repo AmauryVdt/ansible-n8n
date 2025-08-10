@@ -24,15 +24,6 @@ services:
     networks:
       - n8n-network
 
-  redis:
-    image: redis:6.2-alpine
-    container_name: redis
-    restart: always
-    volumes:
-      - redis_data:/data
-    networks:
-      - n8n-network
-
   n8n:
     image: n8nio/n8n:latest
     container_name: n8n_main
@@ -46,9 +37,6 @@ services:
       - "traefik.http.routers.n8n.tls.certresolver=myresolver"
       - "traefik.http.middlewares.n8n-ssl.redirectscheme.scheme=https"
       - "traefik.http.routers.n8n.middlewares=n8n-ssl"
-      # --- Basic Auth Middleware ---
-      # - "traefik.http.middlewares.n8n-auth.basicauth.users=admin:$apr1$j8.AAn/B$2yLdKAx4H3aJ3d0g.4s..." # Remplacez par votre ligne htpasswd
-      # - "traefik.http.routers.n8n.middlewares=n8n-auth"
       - "traefik.http.services.n8n.loadbalancer.server.port=5678"
     env_file: .env
     volumes:
@@ -56,8 +44,12 @@ services:
     networks:
       - n8n-network
     depends_on:
-      - redis
       - traefik
+{% if redis_cluster_enabled %}
+      - redis-node-0
+{% else %}
+      - redis
+{% endif %}
 
 {% for i in range(1, n8n_worker_replicas + 1) %}
   n8n-worker-{{ i }}:
@@ -72,13 +64,67 @@ services:
       - n8n-network
     depends_on:
       - n8n
+{% if redis_cluster_enabled %}
+      - redis-node-0
+{% else %}
       - redis
+{% endif %}
 {% endfor %}
+
+{% if redis_cluster_enabled %}
+# =======================
+# Redis Cluster (3M+3R)
+# =======================
+{% set all_nodes = [] %}
+{% for i in range(redis_cluster_nodes) %}
+{% set _ = all_nodes.append('redis-node-' ~ i) %}
+{% endfor %}
+
+{% for i in range(redis_cluster_nodes) %}
+  redis-node-{{ i }}:
+    image: docker.io/bitnami/redis-cluster:8.2.0
+    restart: always
+    networks:
+      - n8n-network
+    environment:
+      REDIS_PASSWORD: ${QUEUE_BULL_REDIS_PASSWORD}
+      REDIS_AOF_ENABLED: yes
+      REDIS_NODES: {{ all_nodes | join(' ') }}
+      REDISCLI_AUTH: ${QUEUE_BULL_REDIS_PASSWORD}
+{% if i == (redis_cluster_nodes - 1) %}
+      REDIS_CLUSTER_CREATOR: yes
+      REDIS_CLUSTER_REPLICAS: {{ redis_cluster_replicas }}
+{% endif %}
+    volumes:
+      - redis-data-{{ i }}:/bitnami/redis/data
+{% endfor %}
+
+{% else %}
+  # =======================
+  # Redis Standalone
+  # =======================
+  redis:
+    image: redis:6.2-alpine
+    container_name: redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    networks:
+      - n8n-network
+{% endif %}
+
 
 volumes:
   n8n_data:
-  redis_data:
   letsencrypt:
+{% if redis_cluster_enabled %}
+{% for i in range(redis_cluster_nodes) %}
+  redis-data-{{ i }}:
+{% endfor %}
+{% else %}
+  redis_data:
+{% endif %}
+
 
 networks:
   n8n-network:

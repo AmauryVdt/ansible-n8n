@@ -3,14 +3,27 @@
 # Ces valeurs sont destinées à être écrasées dans des fichiers
 # de variables d'inventaire (ex: group_vars/n8n_servers.yml).
 
-n8n_dir: /srv/n8n
-
 # --- Variables de configuration de l'application ---
 # Fournissez vos propres valeurs dans group_vars.
-LETSENCRYPT_EMAIL: ""
+
+
+# ===== Répertoire n8n =====
 N8N_DOMAIN: ""
 TIMEZONE: "Etc/UTC"
-                                                              
-
-# defaults file for n8n_stacks
+LETSENCRYPT_EMAIL: ""
+n8n_dir: /srv/n8n
 n8n_worker_replicas: 2
+
+# ===== Database ===== 
+DB_POSTGRESDB_DATABASE: "postgres"
+DB_POSTGRESDB_HOST: "my-postgres-host"
+DB_POSTGRESDB_PORT: 5432
+DB_POSTGRESDB_USER: "John_Doe"
+DB_POSTGRESDB_PASSWORD: "change_me"
+
+# ===== Redis Cluster =====
+redis_cluster_enabled: true
+redis_cluster_nodes: 6          # 6 (3 masters + 3 replicas) recommand in prod
+redis_cluster_replicas: 1       # 1 replica for each master
+redis_password: "change_me"
+                                                              
