@@ -1,6 +1,65 @@
 # Ansible N8N Deployment
 
-This repository contains Ansible playbooks to deploy n8n stacks.
+This repository contains Ansible playbooks to deploy n8n stacks with a HA.
+Once started, you will have a docker on your server with 3 n8n container and 6 redis container.
+
+## Requiered
+- A postgres database (I recommand suppabase).
+- A server with SSH.
+
+## Get Started
+
+### 1. Clone the project
+
+```bash
+git clone https://github.com/your-username/ansible-n8n.git
+cd ansible-n8n
+```
+
+### 2. Create a virtual environment and install dependencies
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 3. Configure n8n variables
+
+Create a `n8n_servers.yml` file in the `group_vars` directory. You can copy the default variables and adapt them to your needs.
+
+```bash
+cp roles/n8n_stacks/defaults/main.yml group_vars/n8n_servers.yml
+```
+
+Now, edit `group_vars/n8n_servers.yml` with your own variables.
+
+It is strongly recommended to encrypt this file with Ansible Vault. Create a `vault_password.txt` file containing your password, then run:
+
+```bash
+ansible-vault encrypt group_vars/n8n_servers.yml --vault-password-file vault_password.txt
+```
+
+### 4. Configure SSH access
+
+Make sure you can connect to your server via SSH. You can either configure an SSH key in your `~/.ssh/config` file, or specify the connection details directly in the `inventory.yml` file:
+
+```yaml
+n8n_servers:
+  hosts:
+    my-n8n-server:
+      ansible_host: your_server_ip
+      ansible_user: your_ssh_user
+      ansible_ssh_private_key_file: /path/to/your/private/key
+```
+
+### 5. Run the playbook
+
+You can now deploy the n8n stack by running the main playbook:
+
+```bash
+ansible-playbook -i inventory.yml main.yml --vault-password-file vault_password.txt
+```
 
 ## Structure
 

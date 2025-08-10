@@ -3,3 +3,4 @@
 *.env
 *.retry
 vault_password.txt
+group_vars/n8n_servers.yml
